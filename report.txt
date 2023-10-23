@@ -1,0 +1,20 @@
+La rete dell'azienda è divisa in varie VLAN.
+Le VLAN1 (Commercio) e VLAN3 (Dirigenza) sono collegate a un router che permette comunicazione verso altre VLAN utilizzando la modalità TRUNK per le porte corrispondenti. Questo permette a VLAN1 e VLAN3 di ottenere accesso verso il NAS, DNS e l'applicazione server.
+Abbiamo ritenuto che VLAN2 (Deposito) non avesse bisogno di comunicare con questi ultimi server. Per questo motivo abbiamo impostato le corrispondenti porte TRUNK dello switch in modo tale che la comunicazione possa avvenire solamente verso VLAN1 e VLAN3.
+I server HTTP e SMTP si trovano in DMZ e sono protetti da un WAF.
+Per proteggere la rete interna dalle connessioni provenienti dalla DMZ abbiamo utilizzato un IPS. Per proteggere la rete interna da minacce dirette invece abbiamo impostato un firewall dinamico.
+Supponendo che si voglia avere accesso ai server frequentemente l'abbiamo 'protetto' con un IDS, che non blocca il collegamento ma si limita a notificarci quando rileva un rischio.
+
+------------------------------------------------------------
+Web server e application server sono stati entrambi simulati su una macchina virtuale utilizzante metasploitable.
+Il primo obbiettivo consiste nella scrittura di un codice in python che enumeri i metodi HTTP di DVWA (metasploitable). È stato utilizzato il metodo OPTIONS per ottenere il risultato desiderato.
+Uno sviluppatore può impostare il metodo OPTIONS in maniera tale che non si possa ottenere un risultato corretto. Abbiamo scelto di utilizzare in ogni caso questo metodo in quanto effettuare test utilizzando, ad esempio, il metodo DELETE o PUT, si possono modificare in maniera permanente la macchina.
+------------------------------------------------------------
+Si vuole ora scrivere un codice che ci permetta di enumerare i servizi attivi sulla macchina metasploitable.
+È stato utilizzato il modulo socket per effettuare una connessione TCP con le varie porte, quindi per rilevare i servizi corrispondenti.
+------------------------------------------------------------
+Per effettuare un attacco a dizionario verso la pagina phpMyAdmin si è ricorso a un metodo naïve che crea una serie di connessioni verso il server e controlla la risposta ricevuta alla combinazione username-password inviati. Lo stesso procedimento è stato utilizzato per attaccare, sempre con un dizionario, la sezione bruteforce di DVWA. Abbiamo dovuto inserire un cookie di sessione di DVWA nelle richieste inviate per ottenere accesso a tale pagina.
+------------------------------------------------------------
+Per effettuare il medesimo attacco verso DVWA (sempre sezione bruteforce) con livello di sicurezza alto, non conviene utilizzare lo stesso metodo. Andando a leggere il codice offerto da DVWA nella sezione bruteforce, infatti, si vede che, in caso di combinazione username-password errata, vengono aspettati 3 secondi prima dell'invio della risposta.
+Una possibile soluzione potrebbe essere quella di assegnare un timeout per l'attesa della risposta. In questo modo, se il ritardo è troppo elevato, si può ignorare tale richiesta e procedere a quella successiva. Anche se tale procedimento fosse corretto, tuttavia, la quantità di tempo necessaria per l'attesa della risposta potrebbe essere abbastanza elevato da non permetterci di aggirare il problema.
+L'approccio adottato è stato effettuare richieste in parallelo utilizzando il modulo asyncio. È stato osservato che i tempi di risposta non vengono azzerati nel caso in cui venga mantenuto lo stesso ID di sessione. Si è quindi proceduto creando una serie di sessioni per poi estrarre i corrispondenti ID. Ognuno di questi sono stati associati a una richiesta diversa. In questo modo sono state poi inviate richieste asincrone e controllate le rispettive risposte una volta ricevute.
